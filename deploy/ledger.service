@@ -1,0 +1,43 @@
+# systemd unit for running the shim on the Kubernetes control-plane VM, beside
+# kube-apiserver. kube-apiserver is then started with:
+#   --etcd-servers=https://127.0.0.1:2379
+#   --etcd-cafile / --etcd-certfile / --etcd-keyfile  (if mTLS is configured)
+#
+# Authentication to Spanner uses the VM's attached service account by default
+# (Application Default Credentials). Grant it roles/spanner.databaseUser.
+
+[Unit]
+Description=etcd v3 API shim backed by Cloud Spanner
+Documentation=https://github.com/geoffsdesk/ledger
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Point at your Spanner database. On the emulator, also set SPANNER_EMULATOR_HOST.
+Environment=SPANNER_DATABASE=projects/my-project/instances/kcp/databases/cluster-abcd
+# Optional: pin a service-account key instead of the VM's ADC.
+# Environment=GOOGLE_APPLICATION_CREDENTIALS=/etc/ledger/sa.json
+
+ExecStart=/usr/local/bin/ledger \
+  --listen=127.0.0.1:2379 \
+  --backend=spanner \
+  --spanner-database=${SPANNER_DATABASE} \
+  --watch-poll-interval=100ms \
+  --cert-file=/etc/ledger/server.crt \
+  --key-file=/etc/ledger/server.key \
+  --trusted-ca-file=/etc/ledger/ca.crt
+
+Restart=always
+RestartSec=2
+LimitNOFILE=65536
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/log
+
+[Install]
+WantedBy=multi-user.target

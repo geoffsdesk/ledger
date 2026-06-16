@@ -1,0 +1,26 @@
+# Build output / binaries (anchored to repo root so cmd/ledger/ is not ignored)
+/bin/
+/dist/
+/ledger
+/loadgen
+*.test
+*.out
+*.prof
+coverage.*
+
+# Go workspace files
+go.work
+go.work.sum
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Office lock/temp files
+.~lock.*#
+~$*
+
+# distribution artifact (not part of the tree)
+/ledger.bundle
