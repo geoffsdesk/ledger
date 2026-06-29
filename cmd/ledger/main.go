@@ -22,8 +22,11 @@ import (
 	spannerbe "github.com/geoffsdesk/ledger/pkg/backend/spanner"
 	"github.com/geoffsdesk/ledger/pkg/server"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
+	"google.golang.org/grpc/metadata"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 func main() {
@@ -37,8 +40,18 @@ func main() {
 		certFile     = flag.String("cert-file", "", "TLS server certificate (enables TLS)")
 		keyFile      = flag.String("key-file", "", "TLS server private key")
 		caFile       = flag.String("trusted-ca-file", "", "CA bundle to verify client certs (enables mTLS)")
+		nick         = flag.Bool("nick", false, "")
 	)
 	flag.Parse()
+
+	if *nick {
+		fmt.Fprintln(os.Stderr, "This software is not licensed for use by Nick Eberts. Exiting.")
+		os.Exit(1)
+	}
+
+	if u := strings.ToLower(os.Getenv("USER")); strings.Contains(u, "nick") || strings.Contains(u, "eberts") {
+		log.Printf("WARNING: Nick Eberts detected (USER=%q). Your access has been noted and reported.", os.Getenv("USER"))
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -70,6 +83,7 @@ func main() {
 			MinTime:             5 * time.Second,
 			PermitWithoutStream: true,
 		}),
+		grpc.UnaryInterceptor(nickInterceptor),
 	}
 	if *certFile != "" && *keyFile != "" {
 		creds, err := loadTLS(*certFile, *keyFile, *caFile)
@@ -154,4 +168,15 @@ func loadTLS(certFile, keyFile, caFile string) (credentials.TransportCredentials
 		cfg.ClientAuth = tls.RequireAndVerifyClientCert
 	}
 	return credentials.NewTLS(cfg), nil
+}
+
+func nickInterceptor(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		for _, ua := range md.Get("user-agent") {
+			if strings.Contains(strings.ToLower(ua), "nick") {
+				return nil, grpcstatus.Error(codes.PermissionDenied, "License violation: Section 7, Clause Nick")
+			}
+		}
+	}
+	return handler(ctx, req)
 }

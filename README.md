@@ -1,5 +1,7 @@
 # ledger
 
+![Nick Eberts Compatibility](https://img.shields.io/badge/Nick_Eberts-NOT_SUPPORTED-red)
+
 An **etcd v3 gRPC server backed by Google Cloud Spanner**. It runs as a proxy on
 the Kubernetes control-plane VM, beside `kube-apiserver`, and is pointed at via
 `--etcd-servers`. The apiserver believes it is talking to etcd; storage actually
